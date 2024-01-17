@@ -4,6 +4,8 @@ import { User } from "../models/user.model.js"
 import {uploadOnCloudinar} from "../utils/cloudinary.js"
 import {ApiResponse} from "../utils/apiResponse.js"
 const registerUser = asyncHandler ( async (req, res) =>{
+
+
     //get user details from frontend
     //validation - not empty
     //check if user already exists : username, email
@@ -21,30 +23,43 @@ const registerUser = asyncHandler ( async (req, res) =>{
 
     if(
         [fullname, email, username, password].some((field)=>field?.trim()==="")
-     ) {
+    ) {
         throw new ApiError(400, "all fields are required")
-     }
+    }
 
 
 
-     const existedUser = User.findOne({
-        $or: [{username}, {email}]
-     })
+    const existedUser = await User.findOne({
+       $or: [{username}, {email}]
+    })
 
 
-     if(existedUser){
+    if(existedUser){
         throw new ApiError(409, "User with email and username already existed")
-     }
+    }
 
+    // const avatarLocalPath = res.files?.avatar[0]?.path;
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverLocalPath = req.files?.coverImage[0]?.path;
+    
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
+
+    console.log(avatarLocalPath);
+    console.log(coverImageLocalPath);
+
+    // const coverLocalPath = res.files?.coverImage[0]?.path;
 
     if(!avatarLocalPath){
         throw new ApiError(400, "avatar file is required")
     }
 
-    const avatar = await uploadOnCloudinar(avatarLocalPath)
-    const cover = await uploadOnCloudinar(coverLocalPath)
+    const avatar = await uploadOnCloudinar(avatarLocalPath);
+    const cover = await uploadOnCloudinar(coverImageLocalPath);
+
+    console.log(avatar);
+    console.log(cover);
 
     if(!avatar){
         throw new ApiError(400, "avatar file is required")
@@ -53,7 +68,7 @@ const registerUser = asyncHandler ( async (req, res) =>{
     const user = await User.create({
         fullname,
         avatar: avatar.url,
-        coverImage: coverImage?.url || "",
+        coverImage: cover?.url || "",
         email,
         password,
         username: username.toLowerCase() 
@@ -71,10 +86,6 @@ const registerUser = asyncHandler ( async (req, res) =>{
     return res.status(201).json(
         new ApiResponse(200, createdUser, "User registered successfully")
     )
-
-
-
-
 })
 
 
